@@ -24,13 +24,14 @@ export class ChatbotComponent implements OnInit, OnDestroy {
   userInput: string = '';
   isLoading: boolean = false;
   private apiUrl = 'http://localhost:8000/chat';
-  private typingSpeed = 20; // Reduced typing speed
+  private typingSpeed = 5; // Faster typing speed
   private destroy$ = new Subject<void>();
+  private maxRetries = 2;
+  private currentRetry = 0;
 
   constructor(private http: HttpClient) {}
 
   ngOnInit(): void {
-    // Add welcome message
     this.messages.push({
       text: 'Hello! I am your Waste Assistant. How can I help you today?',
       isUser: false,
@@ -57,6 +58,8 @@ export class ChatbotComponent implements OnInit, OnDestroy {
   }
 
   private formatResponse(text: string): string {
+    if (!text) return '';
+    
     // Split the text into paragraphs and remove empty lines
     const paragraphs = text.split('\n').filter(p => p.trim());
     
@@ -82,25 +85,40 @@ export class ChatbotComponent implements OnInit, OnDestroy {
     tempDiv.innerHTML = formattedText;
     const textContent = tempDiv.textContent || '';
 
-    // Type faster for longer messages
-    const speed = Math.min(this.typingSpeed, 1000 / textContent.length);
+    // Faster typing speed for longer messages
+    const speed = Math.min(this.typingSpeed, 300 / textContent.length);
 
-    for (let i = 0; i < textContent.length; i++) {
-      if (i % 3 === 0) { // Only update every 3 characters for better performance
-        message.text = textContent.substring(0, i + 1);
-        await new Promise(resolve => setTimeout(resolve, speed));
-      }
+    // Larger chunks for faster updates
+    const chunkSize = Math.max(5, Math.floor(textContent.length / 20));
+    for (let i = 0; i < textContent.length; i += chunkSize) {
+      message.text = textContent.substring(0, Math.min(i + chunkSize, textContent.length));
+      await new Promise(resolve => setTimeout(resolve, speed));
     }
 
     message.text = formattedText;
     message.isTyping = false;
   }
 
-  sendMessage(): void {
-    if (this.userInput.trim() === '') return;
+  private async retryRequest(userMessage: string): Promise<void> {
+    if (this.currentRetry < this.maxRetries) {
+      this.currentRetry++;
+      await new Promise(resolve => setTimeout(resolve, 500)); // Shorter retry delay
+      this.sendMessage(userMessage);
+    } else {
+      this.messages.push({
+        text: 'I apologize, but I\'m having trouble connecting to the server. Please try again later.',
+        isUser: false,
+        timestamp: new Date()
+      });
+      this.isLoading = false;
+      this.currentRetry = 0;
+    }
+  }
 
-    const userMessage = this.userInput;
-    
+  sendMessage(message?: string): void {
+    const userMessage = message || this.userInput;
+    if (userMessage.trim() === '') return;
+
     // Add user message
     this.messages.push({
       text: userMessage,
@@ -109,36 +127,49 @@ export class ChatbotComponent implements OnInit, OnDestroy {
     });
 
     this.isLoading = true;
-    this.userInput = ''; // Clear input immediately
+    if (!message) {
+      this.userInput = ''; // Clear input only if it's a new message
+    }
 
     // Make API call to backend with prompt as input
     this.http.post<ApiResponse>(this.apiUrl, { prompt: userMessage })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: async (response) => {
-          if (!response || !response.response) {
-            throw new Error('Invalid response from server');
+          try {
+            if (!response || !response.response) {
+              throw new Error('Invalid response from server');
+            }
+            
+            const botMessage: ChatMessage = {
+              text: response.response,
+              isUser: false,
+              timestamp: new Date()
+            };
+            
+            this.messages.push(botMessage);
+            this.isLoading = false;
+            this.currentRetry = 0;
+            await this.typeMessage(botMessage);
+          } catch (error) {
+            console.error('Error processing response:', error);
+            this.retryRequest(userMessage);
           }
-          
-          const botMessage: ChatMessage = {
-            text: response.response,
-            isUser: false,
-            timestamp: new Date()
-          };
-          
-          this.messages.push(botMessage);
-          this.isLoading = false;
-          await this.typeMessage(botMessage);
         },
         error: (error: HttpErrorResponse) => {
           console.error('Error:', error);
-          const errorMessage = this.getErrorMessage(error);
-          this.messages.push({
-            text: errorMessage,
-            isUser: false,
-            timestamp: new Date()
-          });
-          this.isLoading = false;
+          if (error.status === 0 || error.status === 500) {
+            this.retryRequest(userMessage);
+          } else {
+            const errorMessage = this.getErrorMessage(error);
+            this.messages.push({
+              text: errorMessage,
+              isUser: false,
+              timestamp: new Date()
+            });
+            this.isLoading = false;
+            this.currentRetry = 0;
+          }
         }
       });
   }

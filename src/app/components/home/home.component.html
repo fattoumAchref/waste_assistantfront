@@ -71,12 +71,6 @@
   </div>
 </div>
 
-<!-- Floating Chatbot Button -->
-<button class="floating-chatbot-btn" (click)="openChatbot()" [class.active]="isChatbotOpen">
-  <i class="fas fa-robot"></i>
-  <span class="notification-dot" *ngIf="!isChatbotOpen"></span>
-</button>
-
 <!-- Chatbot Component -->
 <div class="chatbot-container" [class.open]="isChatbotOpen">
   <div class="chatbot-header">
