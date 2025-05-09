@@ -1,20 +1,26 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
-import { FormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
 
+import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
+import { HomeComponent } from './components/home/home.component';
 import { ChatbotComponent } from './components/chatbot/chatbot.component';
+import { DronefootageComponent } from './components/dronefootage/dronefootage.component';
 
 @NgModule({
   declarations: [
     AppComponent,
-    ChatbotComponent
+    HomeComponent,
+    ChatbotComponent,
+    DronefootageComponent
   ],
   imports: [
     BrowserModule,
-    FormsModule,
-    HttpClientModule
+    AppRoutingModule,
+    HttpClientModule,
+    FormsModule
   ],
   providers: [],
   bootstrap: [AppComponent]

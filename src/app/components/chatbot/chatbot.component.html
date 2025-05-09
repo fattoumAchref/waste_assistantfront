@@ -1,38 +1,30 @@
-<div class="chatbot-container">
-  <div class="chat-header">
-    <h2>Waste Assistant</h2>
-  </div>
-  
-  <div class="chat-messages" #messageContainer>
-    <div *ngFor="let message of messages" 
-         [ngClass]="{'message': true, 'user-message': message.isUser, 'bot-message': !message.isUser}">
-      <div class="message-content">
-        <div class="message-text" [innerHTML]="message.text"></div>
-        <div class="message-time">{{ message.timestamp | date:'shortTime' }}</div>
-      </div>
+<div class="chat-container">
+  <div class="messages-container">
+    <div *ngFor="let message of messages" class="message" [ngClass]="{'user': message.isUser, 'bot': !message.isUser}">
+      <div class="message-content" [innerHTML]="message.text"></div>
+      <div class="message-timestamp">{{message.timestamp | date:'shortTime'}}</div>
     </div>
-    <div *ngIf="isLoading" class="message bot-message">
-      <div class="message-content">
-        <div class="typing-indicator">
-          <span></span>
-          <span></span>
-          <span></span>
-        </div>
+    <div *ngIf="isLoading" class="message bot">
+      <div class="typing-indicator">
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
       </div>
     </div>
   </div>
-
-  <div class="chat-input">
-    <input type="text" 
-           [(ngModel)]="userInput" 
-           (keyup.enter)="sendMessage()"
-           placeholder="Type your message here..."
-           [disabled]="isLoading">
-    <button (click)="sendMessage()" [disabled]="isLoading || !userInput.trim()">
-      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="22" y1="2" x2="11" y2="13"></line>
-        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-      </svg>
+  <div class="input-container">
+    <input 
+      type="text" 
+      class="message-input" 
+      [(ngModel)]="userInput" 
+      (keyup.enter)="sendMessage()"
+      placeholder="Type your message here..."
+      [disabled]="isLoading">
+    <button 
+      class="send-button" 
+      (click)="sendMessage()" 
+      [disabled]="isLoading || !userInput.trim()">
+      Send
     </button>
   </div>
 </div>

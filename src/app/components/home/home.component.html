@@ -1,0 +1,89 @@
+<div class="home-container">
+  <div class="hero-section">
+    <div class="hero-content">
+      <h1>Smart Waste Management</h1>
+      <p class="hero-subtitle">Leveraging AI to create a cleaner, more sustainable future</p>
+      <div class="hero-buttons">
+        <button class="primary-btn" routerLink="/drone-analysis">
+          <i class="fas fa-drone"></i>
+          Analyze Drone Footage
+        </button>
+        <button class="secondary-btn" (click)="openChatbot()">
+          <i class="fas fa-robot"></i>
+          Ask Waste Assistant
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="features-section">
+    <h2>Our Features</h2>
+    <div class="features-grid">
+      <div class="feature-card" *ngFor="let feature of features">
+        <i class="fas {{feature.icon}}"></i>
+        <h3>{{feature.title}}</h3>
+        <p>{{feature.description}}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="statistics-section">
+    <div class="stat-card" *ngFor="let stat of statistics">
+      <div class="stat-value">{{stat.value}}</div>
+      <div class="stat-label">{{stat.label}}</div>
+    </div>
+  </div>
+
+  <div class="how-it-works">
+    <h2>How It Works</h2>
+    <div class="steps-container">
+      <div class="step">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <h3>Upload Footage</h3>
+          <p>Upload your drone footage or images for analysis</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <h3>AI Analysis</h3>
+          <p>Our AI system detects and classifies waste items</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <h3>Get Results</h3>
+          <p>Receive detailed analysis and recommendations</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cta-section">
+    <h2>Ready to Transform Your Waste Management?</h2>
+    <p>Join us in creating a sustainable future with smart waste solutions</p>
+    <button class="cta-button" routerLink="/drone-analysis">
+      <i class="fas fa-rocket"></i>
+      Get Started Now
+    </button>
+  </div>
+</div>
+
+<!-- Floating Chatbot Button -->
+<button class="floating-chatbot-btn" (click)="openChatbot()" [class.active]="isChatbotOpen">
+  <i class="fas fa-robot"></i>
+  <span class="notification-dot" *ngIf="!isChatbotOpen"></span>
+</button>
+
+<!-- Chatbot Component -->
+<div class="chatbot-container" [class.open]="isChatbotOpen">
+  <div class="chatbot-header">
+    <h3>Waste Assistant</h3>
+    <button class="close-btn" (click)="closeChatbot()">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
+  <app-chatbot></app-chatbot>
+</div> 
