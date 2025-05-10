@@ -1,0 +1,70 @@
+<div class="detection-container">
+  <div class="upload-section" 
+       [class.dragover]="isDragover"
+       (dragover)="onDragOver($event)"
+       (dragleave)="onDragLeave($event)"
+       (drop)="onDrop($event)">
+    
+    <div class="upload-content" *ngIf="!selectedImage">
+      <i class="fas fa-cloud-upload-alt"></i>
+      <h3>Drag & Drop Image Here</h3>
+      <p>or</p>
+      <label class="upload-button">
+        Choose File
+        <input type="file" 
+               accept="image/*" 
+               (change)="onFileSelected($event)" 
+               style="display: none;">
+      </label>
+      <p class="file-types">Supported formats: JPG, PNG, JPEG</p>
+    </div>
+
+    <div class="preview-section" *ngIf="selectedImage">
+      <img [src]="selectedImage" alt="Selected image" class="preview-image">
+      <div class="overlay" *ngIf="isAnalyzing">
+        <div class="progress-container">
+          <div class="progress-bar" [style.width.%]="analysisProgress"></div>
+          <span class="progress-text">Analyzing... {{analysisProgress}}%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="error-message" *ngIf="errorMessage">
+    {{errorMessage}}
+  </div>
+
+  <div class="results-section" *ngIf="detectionResults.length > 0">
+    <div class="results-header">
+      <h2>Detection Results</h2>
+      <p class="total-objects">Found {{detectionResults.length}} objects</p>
+    </div>
+
+    <div class="results-grid">
+      <div class="result-card" *ngFor="let result of detectionResults; let i = index">
+        <div class="result-header">
+          <h3>{{result.label || 'Object ' + (i + 1)}}</h3>
+          <span class="confidence-badge" 
+                [style.background-color]="getConfidenceColor(result.confidence)">
+            {{formatConfidence(result.confidence)}}
+          </span>
+        </div>
+        
+        <div class="result-details">
+          <p *ngIf="result.material"><strong>Material:</strong> {{result.material}}</p>
+          <p *ngIf="result.state"><strong>State:</strong> {{result.state}}</p>
+          <p *ngIf="result.contamination"><strong>Contamination:</strong> {{result.contamination}}</p>
+          <p *ngIf="result.volume_estimate"><strong>Volume:</strong> {{result.volume_estimate}} m³</p>
+          <p *ngIf="result.bounding_box && result.bounding_box.length > 0">
+            <strong>Bounding Box:</strong> {{result.bounding_box.join(', ')}}
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Debug information -->
+  <div class="debug-info" *ngIf="detectionResults.length === 0 && !isAnalyzing && !errorMessage">
+    <p>No results to display. Please check the console for more information.</p>
+  </div>
+</div> 

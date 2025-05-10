@@ -2,20 +2,11 @@
   <div class="upload-section">
     <h2>Drone Footage Analysis</h2>
     <p>Upload drone footage to analyze waste detection and classification</p>
-    
-    <div class="upload-area" 
-         (click)="fileInput.click()" 
-         [class.dragover]="isDragover"
-         (dragover)="onDragOver($event)"
-         (dragleave)="onDragLeave($event)"
-         (drop)="onDrop($event)">
-      <input 
-        #fileInput
-        type="file" 
-        accept="image/*" 
-        (change)="onFileSelected($event)"
-        style="display: none">
-      
+
+    <div class="upload-area" (click)="fileInput.click()" [class.dragover]="isDragover" (dragover)="onDragOver($event)"
+      (dragleave)="onDragLeave($event)" (drop)="onDrop($event)">
+      <input #fileInput type="file" accept="image/*" (change)="onFileSelected($event)" style="display: none">
+
       <div class="upload-content" *ngIf="!selectedImage">
         <i class="fas fa-cloud-upload-alt"></i>
         <p>Click or drag and drop drone footage here</p>
@@ -23,7 +14,9 @@
       </div>
 
       <div class="preview-content" *ngIf="selectedImage">
-        <img [src]="selectedImage" alt="Selected drone footage">
+        <div class="canvas-container">
+          <canvas id="detectionCanvas" class="preview-canvas"></canvas>
+        </div>
         <button class="change-image" (click)="fileInput.click()">
           <i class="fas fa-sync-alt"></i> Change Image
         </button>
@@ -50,8 +43,11 @@
           </span>
         </div>
         <div class="result-details">
-          <p>Location: X: {{result.location.x}}, Y: {{result.location.y}}</p>
-          <img [src]="result.imageUrl" alt="Detected waste" class="detection-image">
+          <p>Location: ({{result.bbox[0] | number:'1.0-0'}}, {{result.bbox[1] | number:'1.0-0'}})</p>
+          <div class="detection-preview-container">
+            <img [src]="result.croppedImage" class="detection-image" [style.max-width.px]="150"
+              [style.max-height.px]="150" [style.object-fit]="'contain'">
+          </div>
         </div>
       </div>
     </div>
@@ -60,4 +56,4 @@
   <div class="no-results" *ngIf="!isAnalyzing && !detectionResults.length && selectedImage">
     <p>No waste detected in the image. Try uploading a different image.</p>
   </div>
-</div> 
+</div>

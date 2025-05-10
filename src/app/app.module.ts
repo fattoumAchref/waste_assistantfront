@@ -8,13 +8,15 @@ import { AppComponent } from './app.component';
 import { HomeComponent } from './components/home/home.component';
 import { ChatbotComponent } from './components/chatbot/chatbot.component';
 import { DronefootageComponent } from './components/dronefootage/dronefootage.component';
+import { DetectionComponent } from './components/detection/detection.component';
 
 @NgModule({
   declarations: [
     AppComponent,
     HomeComponent,
     ChatbotComponent,
-    DronefootageComponent
+    DronefootageComponent,
+    DetectionComponent
   ],
   imports: [
     BrowserModule,
