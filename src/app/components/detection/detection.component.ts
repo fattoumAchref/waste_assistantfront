@@ -1,14 +1,22 @@
 import { Component } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 
-interface DetectionResult {
-  label: string;
-  confidence: number;
-  bounding_box: number[];
-  volume_estimate: number;
+interface Detection {
+  name: string;
+  conf: number;
+  coords: [number, number, number, number];
+  status?: string;
+  caption?: string | null;
+  weight_g?: number;
   material?: string;
   state?: string;
   contamination?: string;
+}
+
+interface PredictionResponse {
+  detections?: Detection[];
+  original_image?: string;
+  report?: string;
 }
 
 @Component({
@@ -17,29 +25,35 @@ interface DetectionResult {
   styleUrls: ['./detection.component.css']
 })
 export class DetectionComponent {
+  private apiUrl = 'http://localhost:5001/detect';
   isAnalyzing: boolean = false;
-  detectionResults: DetectionResult[] = [];
+  detections: Detection[] = [];
   selectedImage: string | null = null;
   analysisProgress: number = 0;
   isDragover: boolean = false;
-  errorMessage: string = '';
-  private apiUrl = 'http://localhost:5001/detect';
+  canvasImage: HTMLImageElement | null = null;
+  error: string | null = null;
+  analysisReport: string | null = null;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   onDragOver(event: DragEvent): void {
     event.preventDefault();
+    event.stopPropagation();
     this.isDragover = true;
   }
 
   onDragLeave(event: DragEvent): void {
     event.preventDefault();
+    event.stopPropagation();
     this.isDragover = false;
   }
 
   onDrop(event: DragEvent): void {
     event.preventDefault();
+    event.stopPropagation();
     this.isDragover = false;
+
     const files = event.dataTransfer?.files;
     if (files && files.length > 0) {
       this.handleImageFile(files[0]);
@@ -55,146 +69,121 @@ export class DetectionComponent {
 
   private handleImageFile(file: File): void {
     if (!file.type.startsWith('image/')) {
-      this.errorMessage = 'Please select an image file (JPG, PNG, JPEG)';
+      this.error = 'Please upload an image file (JPEG, PNG)';
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (e: ProgressEvent<FileReader>) => {
-      this.selectedImage = e.target?.result as string;
-      this.errorMessage = '';
-      this.analyzeImage(file);
-    };
-    reader.onerror = () => {
-      this.errorMessage = 'Error reading image file';
-      this.selectedImage = null;
-    };
-    reader.readAsDataURL(file);
+    this.selectedImage = URL.createObjectURL(file);
+    this.analyzeImage(file);
   }
 
   analyzeImage(file: File): void {
     this.isAnalyzing = true;
     this.analysisProgress = 0;
-    this.detectionResults = [];
-    this.errorMessage = '';
+    this.detections = [];
+    this.error = null;
+    this.analysisReport = null;
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        this.canvasImage = img;
+        this.drawDetections();
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
 
     const formData = new FormData();
     formData.append('file', file);
 
+    // Simulate progress
     const progressInterval = setInterval(() => {
       if (this.analysisProgress < 90) {
         this.analysisProgress += 10;
       }
-    }, 500);
+    }, 300);
 
-    this.http.post(this.apiUrl, formData).subscribe({
-      next: (response: any) => {
+    this.http.post<PredictionResponse>(this.apiUrl, formData, { 
+      withCredentials: true 
+    }).subscribe({
+      next: (response) => {
         clearInterval(progressInterval);
         this.analysisProgress = 100;
-        console.log('Backend response:', response);
-        
-        if (response.error) {
-          this.errorMessage = response.error;
-          this.isAnalyzing = false;
+
+        console.log("response from back",response)
+
+        if (!response) {
+          console.error('Empty response from server');
+          this.error = 'Server returned empty response';
           return;
         }
+
+        this.detections = response.detections || [];
+        this.analysisReport = response.report || "No analysis report available";
         
-        this.processResults(response);
+        console.log('Processed detections:', this.detections);
+        this.drawDetections();
         this.isAnalyzing = false;
       },
-      error: (error) => {
+      error: (err) => {
         clearInterval(progressInterval);
+        console.error('Error analyzing image:', err);
+        this.error = 'Analysis failed. Please try again.';
         this.isAnalyzing = false;
-        console.error('Error response:', error);
-        
-        if (error.status === 0) {
-          this.errorMessage = 'Cannot connect to the server. Please check if the backend service is running.';
-        } else if (error.error?.detail) {
-          this.errorMessage = error.error.detail;
-        } else {
-          this.errorMessage = 'Error analyzing image. Please try again.';
-        }
       }
     });
   }
 
-  private processResults(response: any): void {
-    console.log('Processing response:', response);
+  private drawDetections(): void {
+    if (!this.canvasImage || !this.selectedImage) return;
 
-    // Handle YOLO detection results
-    if (response && typeof response === 'object') {
-      // Extract detection information from the response
-      const detections: DetectionResult[] = [];
-      
-      // Check for YOLO format
-      if (response[0] && typeof response[0] === 'object') {
-        const yoloResult = response[0];
-        if (yoloResult.boxes && Array.isArray(yoloResult.boxes)) {
-          yoloResult.boxes.forEach((box: any) => {
-            const detection: DetectionResult = {
-              label: box.cls || 'Unknown',
-              confidence: box.conf || 0,
-              bounding_box: box.xyxy || [],
-              volume_estimate: 0,
-              material: 'plastic',
-              state: 'clear',
-              contamination: 'none'
-            };
-            detections.push(detection);
-          });
-        }
-      }
+    const canvas = document.getElementById('detectionCanvas') as HTMLCanvasElement;
+    if (!canvas) return;
 
-      // If we found detections, use them
-      if (detections.length > 0) {
-        this.detectionResults = detections;
-        return;
-      }
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-      // Try other formats
-      if (response.objects && Array.isArray(response.objects)) {
-        this.detectionResults = response.objects.map((obj: any) => ({
-          label: obj.label || obj.name || 'Unknown',
-          confidence: obj.confidence || obj.score || 0,
-          bounding_box: obj.bounding_box || obj.box || [],
-          volume_estimate: obj.volume_estimate || 0,
-          material: obj.material,
-          state: obj.state,
-          contamination: obj.contamination
-        }));
-      } else if (response.detections && Array.isArray(response.detections)) {
-        this.detectionResults = response.detections.map((det: any) => ({
-          label: det.label || det.name || 'Unknown',
-          confidence: det.confidence || det.score || 0,
-          bounding_box: det.bounding_box || det.box || [],
-          volume_estimate: det.volume_estimate || 0,
-          material: det.material,
-          state: det.state,
-          contamination: det.contamination
-        }));
-      } else {
-        console.log('No valid detection format found in response');
-        this.errorMessage = 'No objects detected in the image';
-      }
-    } else {
-      console.log('Invalid response format');
-      this.errorMessage = 'Invalid response from server';
-    }
+    // Set canvas dimensions to match image
+    canvas.width = this.canvasImage.width;
+    canvas.height = this.canvasImage.height;
 
-    if (response.report) {
-      this.errorMessage = response.report;
-    }
+    // Draw the image
+    ctx.drawImage(this.canvasImage, 0, 0, canvas.width, canvas.height);
 
-    console.log('Processed results:', this.detectionResults);
-  }
+    // Draw bounding boxes
+    this.detections.forEach(detection => {
+      const coords = detection.coords;
+      const [x1, y1, x2, y2] = coords;
+      const width = x2 - x1;
+      const height = y2 - y1;
 
-  getConfidenceColor(confidence: number): string {
-    if (confidence >= 0.8) return '#4CAF50';
-    if (confidence >= 0.6) return '#FFC107';
-    return '#F44336';
+      // Draw rectangle
+      ctx.strokeStyle = '#FF3D00';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x1, y1, width, height);
+
+      // Draw label background
+      ctx.fillStyle = '#FF3D00';
+      const text = `${detection.name} (${(detection.conf * 100).toFixed(0)}%)`;
+      const textWidth = ctx.measureText(text).width;
+      ctx.fillRect(x1 - 1, y1 - 25, textWidth + 10, 20);
+
+      // Draw label text
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '14px Arial';
+      ctx.fillText(text, x1 + 4, y1 - 10);
+    });
   }
 
   formatConfidence(confidence: number): string {
-    return (confidence * 100).toFixed(1) + '%';
+    return `${(confidence * 100).toFixed(0)}%`;
   }
-} 
+
+  formatWeight(weight?: number): string {
+    if (!weight) return 'N/A';
+    return `${weight.toFixed(1)} g`;
+  }
+}
